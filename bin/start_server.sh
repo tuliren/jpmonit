@@ -1,4 +1,4 @@
 #!/bin/sh
 
-export FLASK_APP=jpmonit.py
+export FLASK_APP=server.py
 flask run --host=0.0.0.0

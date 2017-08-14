@@ -1,3 +1,3 @@
 #!/bin/sh
 
-python jpmonit.py
+python server.py
