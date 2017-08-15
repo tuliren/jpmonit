@@ -3,7 +3,6 @@ Java Monit Service in Python
 
 ## Launch server
 ```sh
-virtualenv venv
 source venv/bin/activate
 pip install -r requirements.txt
 bin/start_server.sh
