@@ -18,13 +18,13 @@ class Jpmonit:
     except IOError:
       return JpmonitResult(False, "Invalid pid file path: %s" % path)
 
-    return self.check_process(pid)
+    return self.run_checks(pid)
 
   def get_process_id(self, path):
     with open(path, 'r') as file:
       return int(file.readline())
 
-  def check_process(self, pid):
+  def run_checks(self, pid):
     if self.check_deadlock(pid):
       return JpmonitResult(false, "Process %d has deadlock" % pid)
     return JpmonitResult(True)
