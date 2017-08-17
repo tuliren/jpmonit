@@ -32,3 +32,10 @@ curl -i -X GET http://0.0.0.0:5000/check_pid?pid=<pid>
 # By pid in a pid file
 curl -i -X GET http://0.0.0.0:5000/check_pidfile?pidfile=<pid file path>
 ```
+
+## Server Response
+- When all checks pass, status 200 string `AOK` will be returned.
+- When any check fails, status 400 and a string message with details about the failure will be returned.
+
+## Check Items
+- Deadlock
