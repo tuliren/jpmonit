@@ -4,7 +4,6 @@ import subprocess
 
 class Jpmonit:
   deadlock_pattern = re.compile(".*Found.*deadlock.*")
-  timeout_in_seconds = 5
 
   def __init__(self, logger):
     self.logger = logger
