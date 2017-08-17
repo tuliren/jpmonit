@@ -5,7 +5,12 @@ Java Monit Service in Python
 ```sh
 source venv/bin/activate
 pip install -r requirements.txt
+
+# run in production mode
 bin/start_server.sh
+
+# run in local debug mode
+bin/run_local.sh
 ```
 
 ## Help
