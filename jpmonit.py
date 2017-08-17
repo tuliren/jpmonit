@@ -11,7 +11,8 @@ class Jpmonit:
 
   def check_all(self, process_name=None):
     """
-    Check all running Java processes.
+    Check Java processes whose names match to the specified process_name.
+    When process_name is None, check all running processes.
     """
     results = []
     pids = self.get_all_pids(process_name=process_name)
