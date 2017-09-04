@@ -157,6 +157,9 @@ class Jpmonit:
     except Exception as exception:
       return JpmonitResult.invalid("Failed to check memory usage: " + exception)
 
+    if max_heap_size == 0:
+      return JpmonitResult.valid()
+
     used_percentage = used_heap_size / max_heap_size * 100 > threshold
     if used_percentage > threshold:
       return JpmonitResult.invalid("Process " + str(pid) + " has consumed more than 95% of its max heap")
