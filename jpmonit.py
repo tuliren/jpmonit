@@ -37,7 +37,7 @@ class Jpmonit:
     """
     if not pid:
       return JpmonitResult.invalid("Invalid pid: " + str(id))
-    return self.run_checks(pid)
+    return self.run_all_checks(pid)
 
   def check_pidfile(self, pid_file_path):
     """
@@ -50,9 +50,10 @@ class Jpmonit:
       pid = self.get_pid_from_pidfile(pid_file_path)
     except IOError:
       return JpmonitResult.invalid("Invalid pid file path: " + pid_file_path)
-    return self.run_checks(pid)
+    return self.run_all_checks(pid)
 
-  def get_pid_from_pidfile(self, pidfile):
+  @staticmethod
+  def get_pid_from_pidfile(pidfile):
     """
     Get the pid from a pid file. Only one pid is expected per file.
     """
@@ -79,7 +80,7 @@ class Jpmonit:
       return pids
     return pids
 
-  def run_checks(self, pid):
+  def run_all_checks(self, pid):
     """
     Run all checks for a Java process with the specified pid.
     """
@@ -100,7 +101,8 @@ class Jpmonit:
 
     return JpmonitResult(True)
 
-  def check_deadlock(self, pid):
+  @staticmethod
+  def run_deadlock_check(pid):
     """
     Check deadlock by running jstack.
     """
@@ -121,7 +123,8 @@ class Jpmonit:
     else:
       return JpmonitResult.valid()
 
-  def check_insufficient_memory(self, pid, threshold=95):
+  @staticmethod
+  def run_memory_check(pid, threshold=95):
     """
     Check memory usage by running jmap -heap
     """
