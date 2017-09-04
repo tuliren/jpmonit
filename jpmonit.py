@@ -4,6 +4,8 @@ import subprocess
 
 class Jpmonit:
   deadlock_pattern = re.compile(".*Found.*deadlock.*")
+  max_heap_pattern = re.compile("\s*MaxHeapSize\s+=\s+(\d+).*")
+  used_heap_pattern = re.compile("\s*used\s+=\s+(\d+).*")
 
   def __init__(self, logger):
     self.logger = logger
@@ -89,8 +91,12 @@ class Jpmonit:
       self.logger.debug("Existing pids: " + ", ".join(map(lambda p: str(p), pids)))
       return JpmonitResult.invalid("No Java process with PID " + str(int_pid) + " can be found")
 
-    if self.check_deadlock(int_pid):
-      return JpmonitResult.invalid("Process " + str(int_pid) + " has deadlock")
+    result = self.check_deadlock(int_pid)
+    if not result.is_valid():
+      return result
+    result = self.check_insufficient_memory(int_pid)
+    if not result.is_valid():
+      return JpmonitResult.invalid("Process " + str(int_pid) + " has consumed more than 95% of its max heap")
 
     return JpmonitResult(True)
 
@@ -110,7 +116,39 @@ class Jpmonit:
     except Exception as exception:
       return JpmonitResult.invalid("Failed to check deadlock: " + exception)
 
-    return has_deadlock
+    if has_deadlock:
+      return JpmonitResult.invalid("Process " + str(pid) + " has deadlock")
+    else:
+      return JpmonitResult.valid()
+
+  def check_insufficient_memory(self, pid, threshold=95):
+    """
+    Check memory usage by running jmap -heap
+    """
+    p = subprocess.Popen(["jmap", "-heap", str(pid)], stdout=subprocess.PIPE)
+    max_heap_size = 0
+    used_heap_size = 0
+    for line in p.stdout.readlines():
+      if max_heap_size == 0:
+        max_heap_match = Jpmonit.max_heap_pattern.match(line)
+        if max_heap_match is not None:
+          max_heap_size = int(max_heap_match.groups()[0])
+          continue
+
+      used_heap_match = Jpmonit.used_heap_pattern.match(line)
+      if used_heap_match is not None:
+        used_heap_size += int(used_heap_match.groups()[0])
+
+    try:
+      p.wait()
+    except Exception as exception:
+      return JpmonitResult.invalid("Failed to check memory usage: " + exception)
+
+    used_percentage = used_heap_size / max_heap_size * 100 > threshold
+    if used_percentage > threshold:
+      return JpmonitResult.invalid("Process " + str(pid) + " has consumed more than 95% of its max heap")
+    else:
+      return JpmonitResult.valid()
 
 
 class JpmonitResult:
