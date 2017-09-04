@@ -7,39 +7,44 @@ class Jpmonit:
   max_heap_pattern = re.compile("\s*MaxHeapSize\s+=\s+(\d+).*")
   used_heap_pattern = re.compile("\s*used\s+=\s+(\d+).*")
 
-  def __init__(self, logger):
-    self.logger = logger
+  def __init__(self):
+    pass
 
-  def check_all(self, process_name=None):
+  @staticmethod
+  def check_all(process_name=None, logger=None):
     """
     Check Java processes whose names match to the specified process_name.
     When process_name is None, check all running processes.
     """
     results = []
-    pids = self.get_all_pids(process_name=process_name)
+    pids = Jpmonit.get_all_pids(process_name=process_name)
     for pid in pids:
-      result = self.check_pid(pid)
-      self.logger.debug("PID %d: %s" % (pid, result))
+      result = Jpmonit.check_pid(pid)
+      if logger is not None:
+        logger.debug("PID %d: %s" % (pid, result))
       results.append(result)
     return JpmonitResult.from_collection(results)
 
-  def check_process(self, process_name):
+  @staticmethod
+  def check_process(process_name, logger=None):
     """
     Check Java processes with the specific process name.
     """
     if not process_name:
       return JpmonitResult.invalid("Invalid process name: " + process_name)
-    return self.check_all(process_name=process_name)
+    return Jpmonit.check_all(logger=logger)
 
-  def check_pid(self, pid):
+  @staticmethod
+  def check_pid(pid, logger=None):
     """
     Check a Java process with the specified pid.
     """
     if not pid:
       return JpmonitResult.invalid("Invalid pid: " + str(id))
-    return self.run_checks(pid)
+    return Jpmonit.run_checks(pid, logger=logger)
 
-  def check_pidfile(self, pid_file_path):
+  @staticmethod
+  def check_pidfile(pid_file_path, logger=None):
     """
     Check a Java process whose pid is specified in the pid file.
     """
@@ -47,19 +52,21 @@ class Jpmonit:
       return JpmonitResult.invalid("Invalid pid file path: " + pid_file_path)
 
     try:
-      pid = self.get_pid_from_pidfile(pid_file_path)
+      pid = Jpmonit.get_pid_from_pidfile(pid_file_path)
     except IOError:
       return JpmonitResult.invalid("Invalid pid file path: " + pid_file_path)
-    return self.run_checks(pid)
+    return Jpmonit.run_checks(pid, logger=logger)
 
-  def get_pid_from_pidfile(self, pidfile):
+  @staticmethod
+  def get_pid_from_pidfile(pidfile):
     """
     Get the pid from a pid file. Only one pid is expected per file.
     """
     with open(pidfile, "r") as file:
       return int(file.readline())
 
-  def get_all_pids(self, process_name=None):
+  @staticmethod
+  def get_all_pids(process_name=None, logger=None):
     """
     Get pids of running Java processes that match process_name.
     When process_name is None, get all pids.
@@ -75,32 +82,37 @@ class Jpmonit:
     try:
       p.wait()
     except Exception as exception:
-      self.logger.error("Failed to run jps: " + exception)
+      if logger is not None:
+        logger.error("Failed to run jps: " + exception)
       return pids
     return pids
 
-  def run_checks(self, pid):
+  @staticmethod
+  def run_checks(pid, logger=None):
     """
     Run all checks for a Java process with the specified pid.
     """
-    self.logger.debug("Checking pid " + str(pid))
+    if logger is not None:
+      logger.debug("Checking pid " + str(pid))
 
     int_pid = int(pid)
-    pids = self.get_all_pids()
+    pids = Jpmonit.get_all_pids()
     if int_pid not in pids:
-      self.logger.debug("Existing pids: " + ", ".join(map(lambda p: str(p), pids)))
+      if logger is not None:
+        logger.debug("Existing pids: " + ", ".join(map(lambda p: str(p), pids)))
       return JpmonitResult.invalid("No Java process with PID " + str(int_pid) + " can be found")
 
-    result = self.check_deadlock(int_pid)
+    result = Jpmonit.check_deadlock(int_pid)
     if not result.is_valid():
       return result
-    result = self.check_insufficient_memory(int_pid)
+    result = Jpmonit.check_insufficient_memory(int_pid)
     if not result.is_valid():
       return JpmonitResult.invalid("Process " + str(int_pid) + " has consumed more than 95% of its max heap")
 
     return JpmonitResult(True)
 
-  def check_deadlock(self, pid):
+  @staticmethod
+  def check_deadlock(pid):
     """
     Check deadlock by running jstack.
     """
@@ -121,7 +133,8 @@ class Jpmonit:
     else:
       return JpmonitResult.valid()
 
-  def check_insufficient_memory(self, pid, threshold=95):
+  @staticmethod
+  def check_insufficient_memory(pid, threshold=95):
     """
     Check memory usage by running jmap -heap
     """
