@@ -7,8 +7,11 @@ class Jpmonit:
   max_heap_pattern = re.compile("\s*MaxHeapSize\s+=\s+(\d+).*")
   used_heap_pattern = re.compile("\s*used\s+=\s+(\d+).*")
 
-  def __init__(self, logger):
+  def __init__(self, logger, check_deadlock=True, check_memory=True, memory_threshold=95):
     self.logger = logger
+    self.check_deadlock = check_deadlock
+    self.check_memory = check_memory
+    self.memory_threshold = memory_threshold
 
   def check_all(self, process_name=None):
     """
@@ -92,17 +95,19 @@ class Jpmonit:
       self.logger.debug("Existing pids: " + ", ".join(map(lambda p: str(p), pids)))
       return JpmonitResult.invalid("No Java process with PID " + str(int_pid) + " can be found")
 
-    result = self.check_deadlock(int_pid)
-    if not result.is_valid():
-      return result
-    result = self.check_insufficient_memory(int_pid)
-    if not result.is_valid():
-      return JpmonitResult.invalid("Process " + str(int_pid) + " has consumed more than 95% of its max heap")
+    if self.check_deadlock:
+      result = self.run_deadlock_check(int_pid)
+      if not result.is_valid():
+        return result
+
+    if self.check_memory:
+      result = self.run_memory_check(int_pid)
+      if not result.is_valid():
+        return JpmonitResult.invalid("Process " + str(int_pid) + " has consumed more than 95% of its max heap")
 
     return JpmonitResult(True)
 
-  @staticmethod
-  def run_deadlock_check(pid):
+  def run_deadlock_check(self, pid):
     """
     Check deadlock by running jstack.
     """
@@ -116,6 +121,7 @@ class Jpmonit:
     try:
       p.wait()
     except Exception as exception:
+      self.logger.error("Failed to run jstack: " + exception)
       return JpmonitResult.invalid("Failed to check deadlock: " + exception)
 
     if has_deadlock:
@@ -123,8 +129,7 @@ class Jpmonit:
     else:
       return JpmonitResult.valid()
 
-  @staticmethod
-  def run_memory_check(pid, threshold=95):
+  def run_memory_check(self, pid):
     """
     Check memory usage by running jmap -heap
     """
@@ -145,12 +150,13 @@ class Jpmonit:
     try:
       p.wait()
     except Exception as exception:
+      self.logger.error("Failed to run jmap: " + exception)
       return JpmonitResult.invalid("Failed to check memory usage: " + exception)
 
     if max_heap_size == 0:
       return JpmonitResult.valid()
 
-    used_percentage = used_heap_size / max_heap_size * 100 > threshold
+    used_percentage = used_heap_size / max_heap_size * 100 > self.memory_threshold
     if used_percentage > threshold:
       return JpmonitResult.invalid("Process " + str(pid) + " has consumed more than 95% of its max heap")
     else:
