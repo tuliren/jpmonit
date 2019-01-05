@@ -156,8 +156,8 @@ class Jpmonit:
     if max_heap_size == 0:
       return JpmonitResult.valid()
 
-    used_percentage = used_heap_size / max_heap_size * 100 > self.memory_threshold
-    if used_percentage > threshold:
+    used_percentage = used_heap_size / max_heap_size * 100
+    if used_percentage > self.memory_threshold:
       return JpmonitResult.invalid("Process " + str(pid) + " has consumed more than 95% of its max heap")
     else:
       return JpmonitResult.valid()
